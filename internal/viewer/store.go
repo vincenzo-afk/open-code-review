@@ -9,6 +9,7 @@ package viewer
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -230,6 +231,7 @@ func readJSONLLines(r io.Reader, visit func([]byte)) error {
 
 // ReviewComment represents a single code review finding from a session.
 type ReviewComment struct {
+	Key            string // stable identity key used by the viewer UI to persist comment status (fixed/solved/ignored)
 	FilePath       string
 	Content        string
 	SuggestionCode string
@@ -524,6 +526,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					if v, ok := cm["severity"].(string); ok {
 						rc.Severity = v
 					}
+					rc.Key = CommentKey(fp, rc)
 					vs.Comments = append(vs.Comments, rc)
 				}
 			}
@@ -618,4 +621,17 @@ func taskDoneSucceeded(arguments string) bool {
 	}
 	stateString, ok := state.(string)
 	return ok && stateString == "DONE"
+}
+
+// CommentKey builds a stable, URL-safe identity key for a review comment from
+// its file path, start line, and the leading bytes of its content. The viewer
+// UI uses this key to persist per-comment status (fixed/solved/ignored) in
+// localStorage so a reviewer can mark and hide findings across page reloads.
+func CommentKey(filePath string, c *ReviewComment) string {
+	body := c.Content
+	if len(body) > 100 {
+		body = body[:100]
+	}
+	h := sha256.Sum256([]byte(fmt.Sprintf("%s:%d:%d:%s", filePath, c.StartLine, c.EndLine, body)))
+	return fmt.Sprintf("%x", h[:8])
 }

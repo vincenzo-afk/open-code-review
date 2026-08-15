@@ -41,8 +41,8 @@ func TestStartServer_AddrInUse(t *testing.T) {
 
 // TestParseTemplate_SessionWithComments renders session.html with review
 // comments spanning several severities and categories so the template helpers
-// (severityCounts, categoryCounts, severityClass, categoryClass,
-// groupCommentsByFile, and the normalization helpers) execute.
+// (severityCounts, categoryCounts, statusCounts, commentKey, severityClass,
+// categoryClass, groupCommentsByFile, and the normalization helpers) execute.
 func TestParseTemplate_SessionWithComments(t *testing.T) {
 	tmpl, err := parseTemplate("session.html")
 	if err != nil {
@@ -54,6 +54,9 @@ func TestParseTemplate_SessionWithComments(t *testing.T) {
 		{FilePath: "a.go", Content: "c2", Category: "security", Severity: "high"},
 		{FilePath: "b.go", Content: "c3", Category: "performance", Severity: "medium"},
 		{FilePath: "b.go", Content: "c4", Category: "docs", Severity: "low"},
+	}
+	for _, c := range comments {
+		c.Key = CommentKey(c.FilePath, c)
 	}
 	vs := &ViewSession{
 		Summary:  SessionSummary{SessionID: "s", CWD: "/p"},
@@ -81,12 +84,33 @@ func TestParseTemplate_SessionWithComments(t *testing.T) {
 		`data-filter-kind="severity" data-filter-value="critical"`,
 		`data-filter-kind="category" data-filter-value="bug"`,
 		`data-filter-kind="category" data-filter-value="other"`,
-		`data-comment-card data-category="bug" data-severity="critical"`,
-		`data-comment-card data-category="other" data-severity="low"`,
+		`data-comment-card data-key="`,
+		`data-filter-kind="status" data-filter-value="all"`,
+		`data-show-marked`,
+		`comment-status-note`,
 		`data-comment-filter-empty`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("rendered page missing %q", want)
+		}
+	}
+}
+
+func TestCommentKey_IsStableAndDistinct(t *testing.T) {
+	a := &ReviewComment{FilePath: "a.go", Content: "same finding text", StartLine: 10}
+	b := &ReviewComment{FilePath: "a.go", Content: "same finding text", StartLine: 10}
+	c := &ReviewComment{FilePath: "a.go", Content: "different finding text", StartLine: 10}
+	d := &ReviewComment{FilePath: "b.go", Content: "same finding text", StartLine: 10}
+	e := &ReviewComment{FilePath: "a.go", Content: "same finding text", StartLine: 11}
+	ka := CommentKey(a.FilePath, a)
+	kb := CommentKey(b.FilePath, b)
+	if ka != kb {
+		t.Errorf("identical comments must yield the same key (%q vs %q)", ka, kb)
+	}
+	for _, other := range []*ReviewComment{c, d, e} {
+		ko := CommentKey(other.FilePath, other)
+		if ka == ko {
+			t.Errorf("distinct comments must yield distinct keys (%v): %q == %q", other, ka, ko)
 		}
 	}
 }

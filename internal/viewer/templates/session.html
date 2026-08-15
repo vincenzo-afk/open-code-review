@@ -109,6 +109,20 @@
 {{if .Session.Comments}}
 <div class="comments-section">
     <h3>Review Comments ({{len .Session.Comments}} findings)</h3>
+    <div class="comment-filter-bar status-filters" role="toolbar" aria-label="Filter comments by status">
+        <span class="comment-filter-label">Status:</span>
+        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="status" data-filter-value="all" aria-pressed="true">All: {{len .Session.Comments}}</button>
+        {{with statusCounts .Session.Comments}}
+        {{if .Active}}<button type="button" class="comment-filter-chip status-active-chip" data-filter-kind="status" data-filter-value="active" aria-pressed="false">Active: {{.Active}}</button>{{end}}
+        {{if .Fixed}}<button type="button" class="comment-filter-chip status-fixed-chip" data-filter-kind="status" data-filter-value="fixed" aria-pressed="false">Fixed: {{.Fixed}}</button>{{end}}
+        {{if .Solved}}<button type="button" class="comment-filter-chip status-solved-chip" data-filter-kind="status" data-filter-value="solved" aria-pressed="false">Solved: {{.Solved}}</button>{{end}}
+        {{if .Ignored}}<button type="button" class="comment-filter-chip status-ignored-chip" data-filter-kind="status" data-filter-value="ignored" aria-pressed="false">Ignored: {{.Ignored}}</button>{{end}}
+        {{end}}
+        <label class="comment-filter-toggle">
+            <input type="checkbox" data-show-marked>
+            <span>Show marked</span>
+        </label>
+    </div>
     {{with severityCounts .Session.Comments}}
     <div class="comment-filter-bar severity-filters" aria-label="Filter comments by severity">
         <span class="comment-filter-label">Severity:</span>
@@ -143,8 +157,13 @@
         </summary>
         <div class="comment-file-body">
         {{range .Comments}}
-            <div class="comment-card" data-comment-card data-category="{{commentCategory .Category}}" data-severity="{{commentSeverity .Severity}}">
+            <div class="comment-card" data-comment-card data-key="{{commentKey .}}" data-category="{{commentCategory .Category}}" data-severity="{{commentSeverity .Severity}}">
                 <div class="comment-meta">
+                    <div class="comment-status-actions">
+                        <button type="button" class="comment-mark-btn" data-mark="fixed" title="Mark as fixed">&#10003; Fixed</button>
+                        <button type="button" class="comment-mark-btn" data-mark="solved" title="Mark as solved">&#10003; Solved</button>
+                        <button type="button" class="comment-mark-btn" data-mark="ignored" title="Mark as ignored">&#10007; Ignore</button>
+                    </div>
                     {{if .Category}}<span class="comment-badge {{categoryClass .Category}}">{{.Category}}</span>{{end}}
                     {{if .Severity}}<span class="comment-badge {{severityClass .Severity}}">{{.Severity}}</span>{{end}}
                     {{if .StartLine}}<span class="comment-lines">L{{.StartLine}}{{if and .EndLine (ne .EndLine .StartLine)}}-L{{.EndLine}}{{end}}</span>{{end}}
@@ -173,6 +192,7 @@
     {{end}}
     </div>
     <p class="comment-filter-empty" data-comment-filter-empty hidden>No comments match this filter.</p>
+    <p class="comment-status-note" data-comment-status-note hidden>Marked comments are hidden until “Show marked” is enabled.</p>
 </div>
 {{end}}
 

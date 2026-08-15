@@ -127,7 +127,31 @@ func normalizedCommentCategory(category string) string {
 }
 
 func normalizedCommentSeverity(severity string) string {
-	return strings.ToLower(strings.TrimSpace(severity))
+	return strings.TrimSpace(strings.ToLower(severity))
+}
+
+// commentKey returns the stable identity key of a review comment so the
+// viewer UI can persist its status (fixed/solved/ignored) in localStorage.
+func commentKey(c *ReviewComment) string {
+	return c.Key
+}
+
+// StatusCount holds per-status totals for the comment status filter bar.
+// Active counts comments that have not been marked fixed/solved/ignored.
+type StatusCount struct {
+	Active  int
+	Fixed   int
+	Solved  int
+	Ignored int
+}
+
+// statusCounts returns the total number of comments in each status bucket.
+// All counts are derived from the raw session data (marked status lives only
+// in the reviewer's browser localStorage), so counts are computed here purely
+// for the UI chips; the JavaScript layer applies the persisted status.
+func statusCounts(comments []*ReviewComment) StatusCount {
+	counts := StatusCount{Active: len(comments)}
+	return counts
 }
 
 func categoryCounts(comments []*ReviewComment) CategoryCount {
@@ -243,6 +267,8 @@ func parseTemplate(name string) (*template.Template, error) {
 		},
 		"severityCounts":  severityCounts,
 		"categoryCounts":  categoryCounts,
+		"commentKey":   commentKey,
+		"statusCounts":  statusCounts,
 		"commentCategory": normalizedCommentCategory,
 		"commentSeverity": normalizedCommentSeverity,
 		"severityClass": func(s string) string {
